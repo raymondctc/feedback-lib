@@ -48,19 +48,22 @@ export function FeedbackProvider({
     }
   }, [isActive]);
 
-  // ESC to exit feedback mode
+  // ESC: first press clears selection (back to hover), second press exits feedback mode
   useEffect(() => {
     if (!isActive) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsActive(false);
-        setSelectedElement(null);
-        setSelectedRect(null);
+        if (selectedElement) {
+          setSelectedElement(null);
+          setSelectedRect(null);
+        } else {
+          setIsActive(false);
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isActive]);
+  }, [isActive, selectedElement]);
 
   const toggle = useCallback(() => {
     setIsActive((prev) => !prev);
