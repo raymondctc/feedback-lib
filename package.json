@@ -1,0 +1,18 @@
+{
+  "name": "feedback-lib",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "test:run": "turbo test:run",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2",
+    "typescript": "^5.9"
+  },
+  "packageManager": "pnpm@10.7.0"
+}

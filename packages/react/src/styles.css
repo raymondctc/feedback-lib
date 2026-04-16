@@ -1,0 +1,3 @@
+[data-feedback-overlay] * {
+  pointer-events: auto;
+}
