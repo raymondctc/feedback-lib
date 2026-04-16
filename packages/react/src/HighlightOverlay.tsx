@@ -37,6 +37,7 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      if (selectedElement) return;
       const target = e.target as HTMLElement;
       if (!target || !isValidTarget(target)) {
         setHighlightedElement(null);
@@ -46,17 +47,18 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       setHighlightedElement(target);
       setHighlightRect(target.getBoundingClientRect());
     },
-    [isValidTarget],
+    [isValidTarget, selectedElement],
   );
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
+      if (selectedElement) return;
       if (!highlightedElement) return;
       e.preventDefault();
       e.stopPropagation();
       onElementSelect(highlightedElement);
     },
-    [highlightedElement, onElementSelect],
+    [highlightedElement, onElementSelect, selectedElement],
   );
 
   useEffect(() => {
