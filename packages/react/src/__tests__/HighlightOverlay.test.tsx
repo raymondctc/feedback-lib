@@ -1,68 +1,66 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { FeedbackProvider, useFeedback } from '../FeedbackProvider.js';
+import { render, screen } from '@testing-library/react';
+import { HighlightOverlay } from '../HighlightOverlay.js';
+import type { FeedbackProviderConfig } from '@feedback/shared';
 
-function TestPage() {
-  const { isActive, toggle } = useFeedback();
-  return (
-    <div>
-      <button onClick={toggle} data-testid="toggle">
-        {isActive ? 'Active' : 'Inactive'}
-      </button>
-      <div data-testid="target" style={{ width: 100, height: 100 }}>
-        Target
-      </div>
-    </div>
-  );
-}
+const defaultConfig: FeedbackProviderConfig = {
+  endpoint: 'https://test.dev/api/v1/feedback',
+  projectId: 'test',
+  categories: ['bug', 'suggestion', 'question', 'other'],
+  captureMethod: 'html2canvas',
+  theme: 'auto',
+  exclude: undefined,
+};
 
 describe('HighlightOverlay', () => {
-  it('renders overlay container when active', () => {
-    render(
-      <FeedbackProvider endpoint="https://test.dev" projectId="test">
-        <TestPage />
-      </FeedbackProvider>,
-    );
+  it('renders overlay when an element is selected', () => {
+    const element = document.createElement('div');
+    element.classList.add('my-class');
+    const rect = new DOMRect(10, 20, 200, 100);
 
-    fireEvent.click(screen.getByTestId('toggle'));
+    render(
+      <HighlightOverlay
+        config={defaultConfig}
+        onElementSelect={vi.fn()}
+        selectedElement={element}
+        selectedRect={rect}
+      />,
+    );
 
     const overlay = screen.getByTestId('feedback-overlay');
     expect(overlay).toBeDefined();
+    // Shows tag name and class
+    expect(overlay.textContent).toContain('div.my-class');
   });
 
-  it('does not render overlay when inactive', () => {
+  it('renders nothing when no element is highlighted or selected', () => {
     render(
-      <FeedbackProvider endpoint="https://test.dev" projectId="test">
-        <TestPage />
-      </FeedbackProvider>,
+      <HighlightOverlay
+        config={defaultConfig}
+        onElementSelect={vi.fn()}
+      />,
     );
 
     expect(screen.queryByTestId('feedback-overlay')).toBeNull();
   });
 
-  it('excludes elements matching exclude prop', () => {
+  it('shows green border when element is selected', () => {
+    const element = document.createElement('span');
+    const rect = new DOMRect(50, 60, 300, 150);
+
     render(
-      <FeedbackProvider
-        endpoint="https://test.dev"
-        projectId="test"
-        exclude={['[data-testid="target"]']}
-      >
-        <TestPage />
-      </FeedbackProvider>,
+      <HighlightOverlay
+        config={defaultConfig}
+        onElementSelect={vi.fn()}
+        selectedElement={element}
+        selectedRect={rect}
+      />,
     );
 
-    fireEvent.click(screen.getByTestId('toggle'));
-    expect(screen.getByTestId('feedback-overlay')).toBeDefined();
-  });
-
-  it('skips overlay elements with data-feedback-overlay attribute', () => {
-    render(
-      <FeedbackProvider endpoint="https://test.dev" projectId="test">
-        <TestPage />
-      </FeedbackProvider>,
-    );
-
-    fireEvent.click(screen.getByTestId('toggle'));
-    expect(screen.getByTestId('feedback-overlay')).toBeDefined();
+    const overlay = screen.getByTestId('feedback-overlay');
+    // Selected state should not show "Double-click to select" hint
+    expect(overlay.textContent).not.toContain('Double-click to select');
+    // Shows element tag
+    expect(overlay.textContent).toContain('span');
   });
 });

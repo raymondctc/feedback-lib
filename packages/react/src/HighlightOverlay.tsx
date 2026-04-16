@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import type { FeedbackProviderConfig } from '@feedback/shared';
 import { MIN_ELEMENT_SIZE } from '@feedback/shared';
 
@@ -12,7 +12,6 @@ interface HighlightOverlayProps {
 export function HighlightOverlay({ config, onElementSelect, selectedElement, selectedRect }: HighlightOverlayProps) {
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
 
   const isExcluded = useCallback(
     (element: HTMLElement): boolean => {
@@ -35,9 +34,14 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     [isExcluded],
   );
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (selectedElement) return;
+  useEffect(() => {
+    if (selectedElement) {
+      setHighlightedElement(null);
+      setHighlightRect(null);
+      return;
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || !isValidTarget(target)) {
         setHighlightedElement(null);
@@ -46,33 +50,32 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       }
       setHighlightedElement(target);
       setHighlightRect(target.getBoundingClientRect());
-    },
-    [isValidTarget, selectedElement],
-  );
+    };
 
-  const handleClick = useCallback(
-    (e: MouseEvent) => {
-      if (selectedElement) return;
-      if (!highlightedElement) return;
+    // Double-click selects the element for feedback.
+    // Single click passes through to the page so menus, links, etc. work normally.
+    const handleDblClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target || !isValidTarget(target)) return;
       e.preventDefault();
-      e.stopPropagation();
-      onElementSelect(highlightedElement);
-    },
-    [highlightedElement, onElementSelect, selectedElement],
-  );
+      onElementSelect(target);
+    };
 
-  useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove, true);
-    document.addEventListener('click', handleClick, true);
+    document.addEventListener('dblclick', handleDblClick, true);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove, true);
-      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('dblclick', handleDblClick, true);
     };
-  }, [handleMouseMove, handleClick]);
+  }, [isValidTarget, onElementSelect, selectedElement]);
+
+  const rect = selectedRect ?? highlightRect;
+  const element = selectedElement ?? highlightedElement;
+
+  if (!rect || !element) return null;
 
   return (
     <div
-      ref={overlayRef}
       data-feedback-overlay=""
       data-testid="feedback-overlay"
       style={{
@@ -85,41 +88,58 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
         zIndex: 999998,
       }}
     >
-      {(selectedRect || highlightRect) && (
+      <div
+        style={{
+          position: 'fixed',
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          border: `3px solid ${selectedRect ? '#16a34a' : '#3b82f6'}`,
+          borderRadius: '4px',
+          pointerEvents: 'none',
+          transition: 'all 0.1s ease-out',
+        }}
+      >
         <div
           style={{
-            position: 'fixed',
-            top: (selectedRect ?? highlightRect)!.top,
-            left: (selectedRect ?? highlightRect)!.left,
-            width: (selectedRect ?? highlightRect)!.width,
-            height: (selectedRect ?? highlightRect)!.height,
-            border: `3px solid ${selectedRect ? '#16a34a' : '#3b82f6'}`,
-            borderRadius: '4px',
-            pointerEvents: 'none',
-            transition: 'all 0.1s ease-out',
+            position: 'absolute',
+            top: '-24px',
+            left: 0,
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            backgroundColor: selectedRect ? '#16a34a' : '#3b82f6',
+            color: '#fff',
+            padding: '2px 6px',
+            borderRadius: '3px',
+            whiteSpace: 'nowrap',
           }}
         >
+          {element.tagName.toLowerCase()}
+          {element.classList?.item(0)
+            ? `.${element.classList.item(0)}`
+            : ''}
+        </div>
+        {!selectedRect && (
           <div
             style={{
               position: 'absolute',
-              top: '-24px',
-              left: 0,
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              backgroundColor: selectedRect ? '#16a34a' : '#3b82f6',
+              bottom: '-20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '10px',
+              fontFamily: 'system-ui, sans-serif',
+              backgroundColor: 'rgba(0,0,0,0.7)',
               color: '#fff',
-              padding: '2px 6px',
+              padding: '1px 5px',
               borderRadius: '3px',
               whiteSpace: 'nowrap',
             }}
           >
-            {(selectedElement ?? highlightedElement)?.tagName.toLowerCase()}
-            {(selectedElement ?? highlightedElement)?.classList?.item(0)
-              ? `.${(selectedElement ?? highlightedElement)!.classList.item(0)}`
-              : ''}
+            Double-click to select
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

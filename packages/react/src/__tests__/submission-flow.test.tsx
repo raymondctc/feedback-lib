@@ -33,14 +33,19 @@ describe('submission flow', () => {
     mockFetch.mockClear();
   });
 
-  it('renders overlay when feedback mode is activated', async () => {
+  it('activates feedback mode on toggle', async () => {
     render(
       <FeedbackProvider endpoint="https://test.dev/api/v1/feedback" projectId="test">
         <TestApp />
       </FeedbackProvider>,
     );
 
+    expect(screen.getByTestId('toggle').textContent).toBe('Inactive');
+
     fireEvent.click(screen.getByTestId('toggle'));
-    expect(screen.getByTestId('feedback-overlay')).toBeDefined();
+    expect(screen.getByTestId('toggle').textContent).toBe('Active');
+
+    fireEvent.click(screen.getByTestId('toggle'));
+    expect(screen.getByTestId('toggle').textContent).toBe('Inactive');
   });
 });
