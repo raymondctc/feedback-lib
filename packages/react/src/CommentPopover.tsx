@@ -164,16 +164,31 @@ function getPosition(anchorRect: DOMRect): { top: number; left: number } {
   const popoverWidth = 320;
   const popoverHeight = 240;
   const margin = 8;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
 
-  let top = anchorRect.bottom + margin;
-  let left = anchorRect.left;
-
-  if (top + popoverHeight > window.innerHeight) {
+  // Prefer below the element; flip above if it overflows
+  const spaceBelow = viewportHeight - anchorRect.bottom - margin;
+  const spaceAbove = anchorRect.top - margin;
+  let top: number;
+  if (spaceBelow >= popoverHeight) {
+    top = anchorRect.bottom + margin;
+  } else if (spaceAbove >= popoverHeight) {
     top = anchorRect.top - popoverHeight - margin;
+  } else {
+    // Neither fits fully — pick whichever side has more room and clamp
+    top = spaceBelow >= spaceAbove
+      ? anchorRect.bottom + margin
+      : anchorRect.top - popoverHeight - margin;
   }
 
-  if (left + popoverWidth > window.innerWidth) {
-    left = window.innerWidth - popoverWidth - margin;
+  // Clamp top so popover stays within viewport
+  top = Math.max(margin, Math.min(top, viewportHeight - popoverHeight - margin));
+
+  // Horizontal: align to element left edge, shift if overflowing
+  let left = anchorRect.left;
+  if (left + popoverWidth > viewportWidth - margin) {
+    left = viewportWidth - popoverWidth - margin;
   }
   if (left < margin) {
     left = margin;
