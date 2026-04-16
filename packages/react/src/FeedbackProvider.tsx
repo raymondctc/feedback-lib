@@ -3,6 +3,7 @@ import type { FeedbackProviderConfig } from '@feedback/shared';
 import { DEFAULT_CATEGORIES } from '@feedback/shared';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { CommentPopover } from './CommentPopover.js';
+import { isDarkMode } from './CommentPopover.js';
 
 export interface FeedbackContextValue {
   isActive: boolean;
@@ -35,6 +36,7 @@ export function FeedbackProvider({
   const [selectedElement, setSelectedElement] = useState<HTMLElement | null>(null);
   const [selectedRect, setSelectedRect] = useState<DOMRect | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dark = isDarkMode();
 
   // Set cursor to crosshair when feedback mode is active
   useEffect(() => {
@@ -158,12 +160,16 @@ export function FeedbackProvider({
             <div data-feedback-overlay="" style={{
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 999999,
+              backgroundColor: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)', zIndex: 999999,
             }}>
               <div style={{
-                backgroundColor: '#fff', padding: '16px 24px',
+                backgroundColor: dark ? '#1c1c1e' : '#fff',
+                color: dark ? '#f5f5f7' : '#111827',
+                border: `1px solid ${dark ? '#3a3a3c' : '#e5e7eb'}`,
+                padding: '16px 24px',
                 borderRadius: '8px', fontFamily: 'system-ui, sans-serif',
                 fontSize: '14px',
+                boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 12px rgba(0,0,0,0.15)',
               }}>
                 Submitting feedback...
               </div>

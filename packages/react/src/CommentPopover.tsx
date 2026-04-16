@@ -7,7 +7,7 @@ interface CommentPopoverProps {
   onCancel: () => void;
 }
 
-function isDarkMode(): boolean {
+export function isDarkMode(): boolean {
   if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
     return true;
   }
