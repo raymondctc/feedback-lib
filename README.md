@@ -1,13 +1,13 @@
 # @pinpoint
 
-A modular feedback collection SDK for React apps. Lets users highlight elements, leave comments, and submit annotated screenshots and DOM snapshots to your server.
+A modular Pinpoint SDK for React apps. Lets users highlight elements, leave comments, and submit annotated screenshots and DOM snapshots to your server.
 
 ## Packages
 
 | Package | Description |
 |---|---|
 | [`@pinpoint/shared`](./packages/shared) | Types, constants, and validators — framework-agnostic |
-| [`@pinpoint/react`](./packages/react) | React SDK — `FeedbackProvider`, `HighlightOverlay`, `CommentPopover`, screenshot capture, DOM serialization, and submission |
+| [`@pinpoint/react`](./packages/react) | React SDK — `PinpointProvider`, `HighlightOverlay`, `CommentPopover`, screenshot capture, DOM serialization, and submission |
 | [`@pinpoint/worker`](./packages/worker) | Cloudflare Worker backend — D1 + R2 + CF Access auth |
 | [`@pinpoint/dashboard`](./packages/dashboard) | React SPA for reviewing submitted feedback |
 | `@pinpoint/mock-worker` | Dev-only Cloudflare Worker that stubs the backend API |
@@ -33,32 +33,32 @@ import "@pinpoint/react/styles.css";
 ### 3. Wrap your app
 
 ```tsx
-import { FeedbackProvider, useFeedback } from "@pinpoint/react";
+import { PinpointProvider, usePinpoint } from "@pinpoint/react";
 
-function FeedbackButton() {
-  const { isActive, toggle } = useFeedback();
+function PinpointButton() {
+  const { isActive, toggle } = usePinpoint();
   return (
     <button
-      data-feedback-overlay
+      data-pinpoint-overlay
       onClick={toggle}
       className="fixed bottom-4 right-4 z-[999990] rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg"
     >
-      {isActive ? "Close Feedback" : "Feedback"}
+      {isActive ? "Close Pinpoint" : "Pinpoint"}
     </button>
   );
 }
 
 export function App() {
   return (
-    <FeedbackProvider endpoint="/api/v1/feedback" projectId="my-project">
+    <PinpointProvider endpoint="/api/v1/feedback" projectId="my-project">
       <YourApp />
-      <FeedbackButton />
-    </FeedbackProvider>
+      <PinpointButton />
+    </PinpointProvider>
   );
 }
 ```
 
-That's it. Clicking the button activates feedback mode — users highlight an element, leave a comment, and the SDK handles the rest.
+That's it. Clicking the button activates Pinpoint mode — users highlight an element, leave a comment, and the SDK handles the rest.
 
 ### 4. Run the backend locally
 
@@ -76,7 +76,7 @@ pnpm dev
 Point the SDK at the worker:
 
 ```tsx
-<FeedbackProvider
+<PinpointProvider
   endpoint="http://localhost:8787/api/v1/feedback"
   projectId="your-project-slug"
 />
@@ -84,7 +84,7 @@ Point the SDK at the worker:
 
 ## API Reference
 
-### `<FeedbackProvider>`
+### `<PinpointProvider>`
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
@@ -96,22 +96,22 @@ Point the SDK at the worker:
 | `exclude` | `string[]` | `[]` | CSS selectors excluded from highlighting |
 | `children` | `ReactNode` | — | App content |
 
-### `useFeedback()`
+### `usePinpoint()`
 
-Returns `{ isActive: boolean; toggle: () => void; config: FeedbackProviderConfig }`.
+Returns `{ isActive: boolean; toggle: () => void; config: PinpointProviderConfig }`.
 
-### `data-feedback-overlay`
+### `data-pinpoint-overlay`
 
-Add this attribute to any element that should **not** be highlighted when feedback mode is active:
+Add this attribute to any element that should **not** be highlighted when Pinpoint mode is active:
 
 ```tsx
-<button data-feedback-overlay onClick={toggle}>Feedback</button>
+<button data-pinpoint-overlay onClick={toggle}>Pinpoint</button>
 ```
 
 ### Exports
 
 ```ts
-import { FeedbackProvider, useFeedback } from "@pinpoint/react";
+import { PinpointProvider, usePinpoint } from "@pinpoint/react";
 import { HighlightOverlay, CommentPopover } from "@pinpoint/react";
 import { captureScreenshot, serializeDOM, generateSelector, submitFeedback } from "@pinpoint/react";
 import "@pinpoint/react/styles.css";
@@ -183,7 +183,7 @@ To use `@pinpoint/react` in another project during development, add a `link:` de
 ```
 @pinpoint/shared     @pinpoint/react          @pinpoint/worker          @pinpoint/dashboard
 ┌─────────────┐     ┌──────────────────┐     ┌────────────────────┐   ┌─────────────────┐
-│ types.ts     │◄────│ FeedbackProvider  │     │ Hono CF Worker      │   │ React SPA        │
+│ types.ts     │◄────│ PinpointProvider   │     │ Hono CF Worker      │   │ React SPA        │
 │ validators   │     │ HighlightOverlay │────▶│ D1 + R2 + Auth     │◄──│ TanStack Query    │
 │ constants    │     │ CommentPopover   │     │ REST API            │   │ React Router      │
 └─────────────┘     │ ScreenshotCapture│     │ Dashboard assets     │   └─────────────────┘

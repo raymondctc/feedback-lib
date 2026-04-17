@@ -1,13 +1,13 @@
 # @pinpoint — Agent Reference
 
-Agent-facing integration guide for the Feedback SDK backend. Use this file to understand how to deploy, configure, and extend the system.
+Agent-facing integration guide for the Pinpoint SDK backend. Use this file to understand how to deploy, configure, and extend the system.
 
 ## Architecture
 
 ```
 @pinpoint/shared          @pinpoint/react           @pinpoint/worker           @pinpoint/dashboard
 ┌─────────────────┐      ┌───────────────────┐    ┌────────────────────┐    ┌─────────────────────┐
-│ types.ts         │◄─────│ FeedbackProvider    │    │ Hono CF Worker      │    │ React SPA (Vite)   │
+│ types.ts         │◄─────│ PinpointProvider     │    │ Hono CF Worker      │    │ React SPA (Vite)   │
 │ validators.ts    │      │ HighlightOverlay   │───▶│ ├─ auth/jwt.ts      │◄───│ ├─ views/           │
 │ constants        │      │ CommentPopover     │    │ ├─ middleware/cors.ts│    │ ├─ components/      │
 └─────────────────┘      │ ScreenshotCapture  │    │ ├─ routes/feedback  │    │ └─ api/ hooks       │
@@ -102,34 +102,34 @@ pnpm add @pinpoint/react
 import "@pinpoint/react/styles.css";
 
 // 3. Wrap your app
-import { FeedbackProvider, useFeedback } from "@pinpoint/react";
+import { PinpointProvider, usePinpoint } from "@pinpoint/react";
 
-function FeedbackButton() {
-  const { isActive, toggle } = useFeedback();
+function PinpointButton() {
+  const { isActive, toggle } = usePinpoint();
   return (
-    <button data-feedback-overlay onClick={toggle}>
-      {isActive ? "Close" : "Feedback"}
+    <button data-pinpoint-overlay onClick={toggle}>
+      {isActive ? "Close" : "Pinpoint"}
     </button>
   );
 }
 
 export function App() {
   return (
-    <FeedbackProvider
+    <PinpointProvider
       endpoint="https://your-worker.workers.dev/api/v1/feedback"
       projectId="your-project-slug-or-id"
       captureMethod="html2canvas"   // or "native"
       theme="auto"                   // "light" | "dark" | "auto"
     >
       <YourApp />
-      <FeedbackButton />
-    </FeedbackProvider>
+      <PinpointButton />
+    </PinpointProvider>
   );
 }
 ```
 
 **Key points:**
-- `data-feedback-overlay` attribute prevents elements from being highlighted (toggle buttons, modals, etc.)
+- `data-pinpoint-overlay` attribute prevents elements from being highlighted (toggle buttons, modals, etc.)
 - `projectId` can be a project slug or nanoid — the worker resolves slugs to IDs automatically
 - The SDK sends `multipart/form-data` with three fields: `metadata` (JSON string), `screenshot` (PNG blob), `dom-snapshot` (JSON blob)
 
