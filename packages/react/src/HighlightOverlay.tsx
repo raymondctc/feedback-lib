@@ -2,6 +2,8 @@ import { useEffect, useCallback, useState } from 'react';
 import type { FeedbackProviderConfig } from '@feedback/shared';
 import { MIN_ELEMENT_SIZE } from '@feedback/shared';
 
+const BORDER_HIT_WIDTH = 8; // px from edge that counts as a "border click"
+
 interface HighlightOverlayProps {
   config: FeedbackProviderConfig;
   onElementSelect: (element: HTMLElement) => void;
@@ -34,9 +36,6 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     [isExcluded],
   );
 
-  // Walk up from e.target to find the nearest valid element in the path.
-  // This avoids selecting tiny inner elements (SVG paths, spans) or giant
-  // outer containers, picking the smallest valid ancestor instead.
   const findBestTarget = useCallback(
     (e: MouseEvent): HTMLElement | null => {
       const path = e.composedPath();
@@ -51,6 +50,29 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     [isValidTarget],
   );
 
+  // Check if a click point is within the border zone of the highlighted element's rect
+  const isBorderClick = useCallback(
+    (clientX: number, clientY: number): boolean => {
+      if (!highlightRect) return false;
+      const { top, left, width, height } = highlightRect;
+      const bottom = top + height;
+      const right = left + width;
+
+      const nearTop = clientY >= top - BORDER_HIT_WIDTH && clientY <= top + BORDER_HIT_WIDTH;
+      const nearBottom = clientY >= bottom - BORDER_HIT_WIDTH && clientY <= bottom + BORDER_HIT_WIDTH;
+      const nearLeft = clientX >= left - BORDER_HIT_WIDTH && clientX <= left + BORDER_HIT_WIDTH;
+      const nearRight = clientX >= right - BORDER_HIT_WIDTH && clientX <= right + BORDER_HIT_WIDTH;
+
+      const insideHorizontal = clientX >= left && clientX <= right;
+      const insideVertical = clientY >= top && clientY <= bottom;
+
+      // Click is on border if it's near an edge AND within the element's extent on the other axis
+      return (nearTop && insideHorizontal) || (nearBottom && insideHorizontal) ||
+             (nearLeft && insideVertical) || (nearRight && insideVertical);
+    },
+    [highlightRect],
+  );
+
   useEffect(() => {
     if (selectedElement) {
       setHighlightedElement(null);
@@ -59,7 +81,6 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Don't clear highlight when hovering over our own UI (Select button, tag label)
       const target = e.target as HTMLElement;
       if (target && target.closest('[data-feedback-overlay]')) return;
 
@@ -73,39 +94,30 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       setHighlightRect(best.getBoundingClientRect());
     };
 
-    document.addEventListener('mousemove', handleMouseMove, true);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove, true);
-    };
-  }, [findBestTarget, selectedElement]);
-
-  // Enter key confirms selection of the highlighted element
-  useEffect(() => {
-    if (selectedElement || !highlightedElement) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
+    // Click near the border of the highlighted element selects it.
+    // Clicks in the interior pass through to the page (menus open, links navigate, etc.)
+    const handleClick = (e: MouseEvent) => {
+      if (!highlightedElement) return;
+      if (isBorderClick(e.clientX, e.clientY)) {
         e.preventDefault();
+        e.stopPropagation();
         onElementSelect(highlightedElement);
       }
+      // Interior clicks pass through naturally
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [highlightedElement, onElementSelect, selectedElement]);
 
-  const handleSelect = useCallback(() => {
-    if (highlightedElement) {
-      onElementSelect(highlightedElement);
-    }
-  }, [highlightedElement, onElementSelect]);
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('click', handleClick, true);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('click', handleClick, true);
+    };
+  }, [findBestTarget, highlightedElement, isBorderClick, onElementSelect, selectedElement]);
 
   const rect = selectedRect ?? highlightRect;
   const element = selectedElement ?? highlightedElement;
 
   if (!rect || !element) return null;
-
-  // Position the Select button: prefer top-right of the element, fall back if clipped
-  const selectBtnTop = Math.max(4, rect.top - 28);
-  const selectBtnLeft = rect.right - 70;
 
   return (
     <div
@@ -154,32 +166,6 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
             : ''}
         </div>
       </div>
-      {/* Select button — only shown when hovering (not when element is already selected) */}
-      {!selectedRect && (
-        <button
-          data-feedback-overlay=""
-          onClick={handleSelect}
-          style={{
-            position: 'fixed',
-            top: selectBtnTop,
-            left: selectBtnLeft,
-            pointerEvents: 'auto',
-            padding: '4px 12px',
-            fontSize: '12px',
-            fontFamily: 'system-ui, sans-serif',
-            fontWeight: 600,
-            color: '#fff',
-            backgroundColor: '#3b82f6',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            zIndex: 999999,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-          }}
-        >
-          Select
-        </button>
-      )}
     </div>
   );
 }
