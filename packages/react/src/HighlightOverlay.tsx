@@ -59,14 +59,18 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      const target = findBestTarget(e);
-      if (!target) {
+      // Don't clear highlight when hovering over our own UI (Select button, tag label)
+      const target = e.target as HTMLElement;
+      if (target && target.closest('[data-feedback-overlay]')) return;
+
+      const best = findBestTarget(e);
+      if (!best) {
         setHighlightedElement(null);
         setHighlightRect(null);
         return;
       }
-      setHighlightedElement(target);
-      setHighlightRect(target.getBoundingClientRect());
+      setHighlightedElement(best);
+      setHighlightRect(best.getBoundingClientRect());
     };
 
     document.addEventListener('mousemove', handleMouseMove, true);
