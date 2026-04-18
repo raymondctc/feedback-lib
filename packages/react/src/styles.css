@@ -1,3 +1,8 @@
-[data-feedback-overlay] * {
+/* Only popovers / submitting UI need pointer-events re-enabled under
+ * react-remove-scroll (`pointer-events: none` on <body>). Do not use
+ * `data-pinpoint-overlay` here — HighlightOverlay uses that marker for
+ * "exclude from highlight" and must stay pointer-transparent for hover. */
+[data-pinpoint-popover],
+[data-pinpoint-popover] * {
   pointer-events: auto;
 }

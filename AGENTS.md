@@ -107,7 +107,7 @@ import { PinpointProvider, usePinpoint } from "@pinpoint/react";
 function PinpointButton() {
   const { isActive, toggle } = usePinpoint();
   return (
-    <button data-pinpoint-overlay onClick={toggle}>
+    <button data-pinpoint-overlay data-pinpoint-popover onClick={toggle}>
       {isActive ? "Close" : "Pinpoint"}
     </button>
   );
@@ -129,7 +129,7 @@ export function App() {
 ```
 
 **Key points:**
-- `data-pinpoint-overlay` attribute prevents elements from being highlighted (toggle buttons, modals, etc.)
+- `data-pinpoint-overlay` prevents elements from being highlighted; `data-pinpoint-popover` restores `pointer-events` under modal `react-remove-scroll` — use both on a floating toggle
 - `projectId` can be a project slug or nanoid — the worker resolves slugs to IDs automatically
 - The SDK sends `multipart/form-data` with three fields: `metadata` (JSON string), `screenshot` (PNG blob), `dom-snapshot` (JSON blob)
 

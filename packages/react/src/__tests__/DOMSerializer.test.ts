@@ -78,13 +78,47 @@ describe('serializeDOM', () => {
     expect(result.truncated).toBe(true);
   });
 
-  it('skips elements with data-feedback-overlay in children', () => {
+  it('skips elements with data-pinpoint-overlay in children', () => {
+    const parent = document.createElement('div');
+    const visible = document.createElement('span');
+    visible.textContent = 'visible';
+    const overlay = document.createElement('div');
+    overlay.setAttribute('data-pinpoint-overlay', '');
+    overlay.textContent = 'overlay';
+    parent.appendChild(visible);
+    parent.appendChild(overlay);
+    container.appendChild(parent);
+
+    const result = serializeDOM(parent);
+
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0].textContent).toBe('visible');
+  });
+
+  it('skips elements with data-pinpoint-popover in children', () => {
+    const parent = document.createElement('div');
+    const visible = document.createElement('span');
+    visible.textContent = 'visible';
+    const popover = document.createElement('div');
+    popover.setAttribute('data-pinpoint-popover', '');
+    popover.textContent = 'popover';
+    parent.appendChild(visible);
+    parent.appendChild(popover);
+    container.appendChild(parent);
+
+    const result = serializeDOM(parent);
+
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0].textContent).toBe('visible');
+  });
+
+  it('also skips elements with legacy data-feedback-overlay attribute', () => {
     const parent = document.createElement('div');
     const visible = document.createElement('span');
     visible.textContent = 'visible';
     const overlay = document.createElement('div');
     overlay.setAttribute('data-feedback-overlay', '');
-    overlay.textContent = 'overlay';
+    overlay.textContent = 'legacy overlay';
     parent.appendChild(visible);
     parent.appendChild(overlay);
     container.appendChild(parent);

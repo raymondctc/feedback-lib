@@ -17,7 +17,7 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
 
   const isExcluded = useCallback(
     (element: HTMLElement): boolean => {
-      if (element.closest('[data-feedback-overlay]')) return true;
+      if (element.closest('[data-pinpoint-overlay]')) return true;
       if (!config.exclude) return false;
       return config.exclude.some((selector) => element.matches(selector));
     },
@@ -41,6 +41,12 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       const path = e.composedPath();
       for (let i = 0; i < path.length; i++) {
         const node = path[i];
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.tagName === 'HTML' || node.tagName === 'BODY') continue;
+        if (isValidTarget(node)) return node;
+      }
+      const stack = document.elementsFromPoint(e.clientX, e.clientY);
+      for (const node of stack) {
         if (!(node instanceof HTMLElement)) continue;
         if (node.tagName === 'HTML' || node.tagName === 'BODY') continue;
         if (isValidTarget(node)) return node;
@@ -82,7 +88,7 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target && target.closest('[data-feedback-overlay]')) return;
+      if (target && target.closest('[data-pinpoint-overlay]')) return;
 
       const best = findBestTarget(e);
       if (!best) {
@@ -121,7 +127,7 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
 
   return (
     <div
-      data-feedback-overlay=""
+      data-pinpoint-overlay=""
       data-testid="pinpoint-overlay"
       style={{
         position: 'fixed',
@@ -158,6 +164,7 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
             padding: '2px 6px',
             borderRadius: '3px',
             whiteSpace: 'nowrap',
+            pointerEvents: 'none',
           }}
         >
           {element.tagName.toLowerCase()}

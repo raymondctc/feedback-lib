@@ -60,21 +60,60 @@ export function CommentPopover({
     popoverRef.current?.querySelector('textarea')?.focus();
   }, []);
 
+  // Radix DismissableLayer / FocusScope listen on `document`. React's
+  // synthetic stopPropagation does not stop native bubbling — attach real
+  // DOM listeners on the popover root so events never reach `document`.
+  useEffect(() => {
+    const el = popoverRef.current;
+    if (!el) return;
+    const stop = (e: Event) => e.stopPropagation();
+    // Do not listen for `click` (or rely on stopping it): that would block
+    // bubbling to the React root and break delegated onClick handlers.
+    const types = ['pointerdown', 'mousedown', 'touchstart', 'focusin', 'focusout'] as const;
+    types.forEach((t) => el.addEventListener(t, stop));
+    return () => types.forEach((t) => el.removeEventListener(t, stop));
+  }, []);
+
+  // FocusScope registers `focusout` on `document` (bubble). When focus moves
+  // from the trapped Sheet into our popover, that event originates under the
+  // Sheet and never crosses the popover root — so stopping `focusout` only on
+  // the popover cannot hide it from Radix. Radix then refocuses inside the
+  // Sheet and the textarea never keeps focus. Stop propagation at `body`
+  // when focus is entering a popover subtree.
+  useEffect(() => {
+    const stopFocusOutForPopoverTarget = (e: FocusEvent) => {
+      const next = e.relatedTarget;
+      if (next instanceof Node && (next as HTMLElement).closest?.('[data-pinpoint-popover]')) {
+        e.stopPropagation();
+      }
+    };
+    document.body.addEventListener('focusout', stopFocusOutForPopoverTarget);
+    return () => document.body.removeEventListener('focusout', stopFocusOutForPopoverTarget);
+  }, []);
+
   const handleSubmit = () => {
     const trimmed = comment.trim();
     if (!trimmed) return;
     onSubmit(trimmed, category);
   };
 
+  // The popover is rendered at document.body level via React, so when a host
+  // app opens a Radix/shadcn Dialog/Sheet in modal mode, `react-remove-scroll`
+  // sets `pointer-events: none` on <body>, which the popover would inherit —
+  // making it unclickable. Explicit `pointer-events: auto` restores clicks.
+  // `data-pinpoint-popover` is styled in styles.css for the same reason on
+  // descendants; `data-pinpoint-overlay` excludes this subtree from highlighting.
   return (
     <div
       ref={popoverRef}
-      data-feedback-overlay=""
+      data-pinpoint-overlay=""
+      data-pinpoint-popover=""
       style={{
         position: 'fixed',
         top: position.top,
         left: position.left,
         zIndex: 999999,
+        pointerEvents: 'auto',
         backgroundColor: colors.bg,
         border: `1px solid ${colors.border}`,
         borderRadius: '8px',

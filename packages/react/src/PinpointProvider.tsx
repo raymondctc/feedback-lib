@@ -176,10 +176,11 @@ export function PinpointProvider({
       {isActive && (
         <>
           {isSubmitting && (
-            <div data-feedback-overlay="" style={{
+            <div data-pinpoint-overlay="" data-pinpoint-popover="" style={{
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backgroundColor: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)', zIndex: 999999,
+              pointerEvents: 'auto',
             }}>
               <div style={{
                 backgroundColor: dark ? '#1c1c1e' : '#fff',

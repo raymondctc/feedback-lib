@@ -70,7 +70,11 @@ function getAttributes(element: HTMLElement): Record<string, string> {
   const attrs: Record<string, string> = {};
   for (let i = 0; i < element.attributes.length; i++) {
     const attr = element.attributes[i];
-    if (attr.name !== 'data-feedback-overlay') {
+    if (
+      attr.name !== 'data-pinpoint-overlay' &&
+      attr.name !== 'data-pinpoint-popover' &&
+      attr.name !== 'data-feedback-overlay'
+    ) {
       attrs[attr.name] = attr.value;
     }
   }
@@ -103,6 +107,8 @@ function getVisibleChildren(element: HTMLElement): HTMLElement[] {
   const children: HTMLElement[] = [];
   for (let i = 0; i < element.children.length; i++) {
     const child = element.children[i] as HTMLElement;
+    if (child.hasAttribute('data-pinpoint-overlay')) continue;
+    if (child.hasAttribute('data-pinpoint-popover')) continue;
     if (child.hasAttribute('data-feedback-overlay')) continue;
     if (child.style?.display === 'none') continue;
     if (child.style?.visibility === 'hidden') continue;

@@ -102,10 +102,16 @@ Returns `{ isActive: boolean; toggle: () => void; config: PinpointProviderConfig
 
 ### `data-pinpoint-overlay`
 
-Add this attribute to any element that should **not** be highlighted when Pinpoint mode is active:
+Add this attribute to any element that should **not** be highlighted when Pinpoint mode is active.
+
+### `data-pinpoint-popover`
+
+Under Radix Dialog / Sheet, `react-remove-scroll` can set `pointer-events: none` on `<body>`. The SDK’s CSS re-enables clicks for `[data-pinpoint-popover]` and its descendants. Use **both** attributes on a floating toggle so it stays clickable and excluded from highlight:
 
 ```tsx
-<button data-pinpoint-overlay onClick={toggle}>Pinpoint</button>
+<button data-pinpoint-overlay data-pinpoint-popover onClick={toggle}>
+  Pinpoint
+</button>
 ```
 
 ### Exports
