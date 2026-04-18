@@ -36,15 +36,14 @@ describe('captureScreenshot', () => {
     element.remove();
   });
 
-  it('captures document.body instead of the clicked element', async () => {
+  it('passes the clicked element to html2canvas (not document.body)', async () => {
     const { default: html2canvas } = await import('html2canvas-pro');
     const element = document.createElement('div');
     document.body.appendChild(element);
 
     await captureScreenshot(element);
 
-    // Should be called with document.body, not the passed element
-    expect(html2canvas).toHaveBeenCalledWith(document.body, expect.objectContaining({
+    expect(html2canvas).toHaveBeenCalledWith(element, expect.objectContaining({
       useCORS: true,
     }));
 
@@ -58,7 +57,9 @@ describe('captureScreenshot', () => {
 
     await captureScreenshot(element);
 
-    // backgroundColor should be a computed value (string) or undefined, never null
+    // backgroundColor should be a computed value (string) or undefined,
+    // never null — null would make html2canvas use a transparent canvas
+    // which shows as white/grey on dark-themed sites.
     const callArgs = (html2canvas as any).mock.calls.at(-1);
     const options = callArgs[1];
     expect(options.backgroundColor).not.toBe(null);
@@ -66,17 +67,16 @@ describe('captureScreenshot', () => {
     element.remove();
   });
 
-  it('includes windowWidth and windowHeight for full-page capture', async () => {
+  it('strips pinpoint overlays from cloned document via onclone', async () => {
     const { default: html2canvas } = await import('html2canvas-pro');
     const element = document.createElement('div');
     document.body.appendChild(element);
 
     await captureScreenshot(element);
 
-    expect(html2canvas).toHaveBeenCalledWith(document.body, expect.objectContaining({
-      windowWidth: expect.any(Number),
-      windowHeight: expect.any(Number),
-    }));
+    const callArgs = (html2canvas as any).mock.calls.at(-1);
+    const options = callArgs[1];
+    expect(options.onclone).toBeInstanceOf(Function);
 
     element.remove();
   });
