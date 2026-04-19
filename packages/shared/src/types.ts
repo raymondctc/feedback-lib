@@ -2,7 +2,7 @@
 
 export type FeedbackStatus = 'open' | 'resolved' | 'dismissed' | 'deleted';
 export type FeedbackCategory = 'bug' | 'suggestion' | 'question' | 'other';
-export type CaptureMethod = 'html2canvas' | 'native';
+export type CaptureMethod = 'dom' | 'native';
 
 export interface FeedbackItem {
   id: string;

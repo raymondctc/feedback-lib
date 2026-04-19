@@ -23,7 +23,7 @@ interface PinpointProviderProps {
   endpoint: string;
   projectId: string;
   categories?: string[];
-  captureMethod?: 'html2canvas' | 'native';
+  captureMethod?: 'dom' | 'native';
   theme?: 'light' | 'dark' | 'auto';
   exclude?: string[];
   children: ReactNode;
@@ -33,7 +33,7 @@ export function PinpointProvider({
   endpoint,
   projectId,
   categories,
-  captureMethod = 'html2canvas',
+  captureMethod = 'dom',
   theme = 'auto',
   exclude,
   children,
@@ -134,7 +134,7 @@ export function PinpointProvider({
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         userAgent: navigator.userAgent,
-        captureMethod: config.captureMethod ?? 'html2canvas',
+        captureMethod: config.captureMethod ?? 'dom',
       });
 
       if (!metadata.valid) {

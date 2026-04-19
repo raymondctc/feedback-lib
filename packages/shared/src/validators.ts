@@ -22,7 +22,7 @@ export type ValidationResult<T> = ValidResult<T> | InvalidResult;
 // --- Valid Sets ---
 
 const VALID_CATEGORIES = new Set<string>(DEFAULT_CATEGORIES);
-const VALID_CAPTURE_METHODS = new Set<string>(['html2canvas', 'native']);
+const VALID_CAPTURE_METHODS = new Set<string>(['dom', 'native']);
 
 // --- Validators ---
 
@@ -63,7 +63,7 @@ export function validateFeedbackMetadata(metadata: unknown): ValidationResult<Fe
   }
 
   if (!VALID_CAPTURE_METHODS.has(obj.captureMethod as string)) {
-    return { valid: false, error: 'Invalid captureMethod. Must be one of: html2canvas, native' };
+    return { valid: false, error: 'Invalid captureMethod. Must be one of: dom, native' };
   }
 
   const data: FeedbackMetadata = {

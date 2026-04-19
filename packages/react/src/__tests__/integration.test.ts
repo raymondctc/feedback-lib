@@ -22,7 +22,7 @@ describe('package integration', () => {
       viewportWidth: 1920,
       viewportHeight: 1080,
       userAgent: 'TestAgent/1.0',
-      captureMethod: 'html2canvas',
+      captureMethod: 'dom',
     });
 
     expect(metadata.valid).toBe(true);

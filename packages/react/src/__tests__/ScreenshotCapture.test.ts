@@ -1,12 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { captureScreenshot } from '../ScreenshotCapture.js';
 
-vi.mock('html2canvas-pro', () => ({
-  default: vi.fn().mockResolvedValue({
-    toBlob: (cb: (blob: Blob | null) => void) => {
-      cb(new Blob(['fake-png'], { type: 'image/png' }));
-    },
-  }),
+vi.mock('modern-screenshot', () => ({
+  domToBlob: vi.fn().mockResolvedValue(new Blob(['fake-png'], { type: 'image/png' })),
 }));
 
 describe('captureScreenshot', () => {
@@ -22,9 +18,9 @@ describe('captureScreenshot', () => {
     element.remove();
   });
 
-  it('returns null when html2canvas-pro throws', async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
-    (html2canvas as any).mockRejectedValueOnce(new Error('render failed'));
+  it('returns null when domToBlob throws', async () => {
+    const { domToBlob } = await import('modern-screenshot');
+    (domToBlob as any).mockRejectedValueOnce(new Error('render failed'));
 
     const element = document.createElement('div');
     document.body.appendChild(element);
@@ -36,47 +32,58 @@ describe('captureScreenshot', () => {
     element.remove();
   });
 
-  it('passes the clicked element to html2canvas (not document.body)', async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
+  it('passes the clicked element to domToBlob (not document.body)', async () => {
+    const { domToBlob } = await import('modern-screenshot');
     const element = document.createElement('div');
     document.body.appendChild(element);
 
     await captureScreenshot(element);
 
-    expect(html2canvas).toHaveBeenCalledWith(element, expect.objectContaining({
-      useCORS: true,
+    expect(domToBlob).toHaveBeenCalledWith(element, expect.objectContaining({
+      scale: expect.any(Number),
     }));
 
     element.remove();
   });
 
   it('uses resolved page background instead of null', async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
+    const { domToBlob } = await import('modern-screenshot');
     const element = document.createElement('div');
     document.body.appendChild(element);
 
     await captureScreenshot(element);
 
-    // backgroundColor should be a computed value (string) or undefined,
-    // never null — null would make html2canvas use a transparent canvas
-    // which shows as white/grey on dark-themed sites.
-    const callArgs = (html2canvas as any).mock.calls.at(-1);
+    // backgroundColor should be a computed value (string) or null,
+    // never undefined — null means "transparent" in modern-screenshot.
+    const callArgs = (domToBlob as any).mock.calls.at(-1);
     const options = callArgs[1];
-    expect(options.backgroundColor).not.toBe(null);
+    expect(options.backgroundColor).not.toBeUndefined();
 
     element.remove();
   });
 
-  it('strips pinpoint overlays from cloned document via onclone', async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
+  it('passes a filter function that excludes pinpoint overlays', async () => {
+    const { domToBlob } = await import('modern-screenshot');
     const element = document.createElement('div');
     document.body.appendChild(element);
 
     await captureScreenshot(element);
 
-    const callArgs = (html2canvas as any).mock.calls.at(-1);
+    const callArgs = (domToBlob as any).mock.calls.at(-1);
     const options = callArgs[1];
-    expect(options.onclone).toBeInstanceOf(Function);
+    expect(options.filter).toBeInstanceOf(Function);
+
+    // Verify the filter excludes overlay and popover nodes
+    const overlayEl = document.createElement('div');
+    overlayEl.setAttribute('data-pinpoint-overlay', '');
+    expect(options.filter(overlayEl)).toBe(false);
+
+    const popoverEl = document.createElement('div');
+    popoverEl.setAttribute('data-pinpoint-popover', '');
+    expect(options.filter(popoverEl)).toBe(false);
+
+    const normalEl = document.createElement('div');
+    expect(options.filter(normalEl)).toBe(true);
 
     element.remove();
   });

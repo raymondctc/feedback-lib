@@ -49,7 +49,7 @@ app.post('/api/v1/feedback', async (c) => {
     viewport_height: parsed.viewportHeight ?? null,
     user_agent: parsed.userAgent ?? null,
     created_by: 'anonymous',
-    capture_method: parsed.captureMethod ?? 'html2canvas',
+    capture_method: parsed.captureMethod ?? 'dom',
     created_at: now,
     updated_at: now,
     deleted_at: null,

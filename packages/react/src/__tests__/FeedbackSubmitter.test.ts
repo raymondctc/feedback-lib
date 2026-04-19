@@ -13,7 +13,7 @@ describe('submitFeedback', () => {
     viewportWidth: 1920,
     viewportHeight: 1080,
     userAgent: 'Mozilla/5.0',
-    captureMethod: 'html2canvas',
+    captureMethod: 'dom',
   };
   const mockSnapshot: DOMSnapshotNode = {
     tagName: 'button',

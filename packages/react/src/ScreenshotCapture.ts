@@ -1,10 +1,11 @@
-import html2canvas from 'html2canvas-pro';
+import { domToBlob } from 'modern-screenshot';
+import type { Options } from 'modern-screenshot';
 
 /**
  * Resolve the effective background colour of the page by checking
  * <html> and <body>. Returns the first non-transparent colour found,
- * or null if both are transparent (html2canvas will fall back to its
- * default white fill).
+ * or null if both are transparent (modern-screenshot will render a
+ * transparent background).
  */
 function resolvePageBackground(): string | null {
   for (const el of [document.documentElement, document.body]) {
@@ -27,28 +28,27 @@ export async function captureScreenshot(
     // on a white/grey canvas.
     const bgColor = resolvePageBackground();
 
-    const canvas = await html2canvas(element, {
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: bgColor ?? undefined,
+    const options: Options = {
       scale: window.devicePixelRatio || 1,
-      // Strip Pinpoint overlays from the cloned document so they never
-      // appear in the screenshot (safety net for when the captured
-      // element is a high-level ancestor that contains the React root).
-      onclone: (_doc, clonedDoc) => {
-        clonedDoc
-          .querySelectorAll('[data-pinpoint-overlay], [data-pinpoint-popover]')
-          .forEach((el) => el.remove());
+      backgroundColor: bgColor ?? null,
+      // Exclude Pinpoint UI overlays from the screenshot by filtering
+      // them out before cloning. Returning false prevents the node and
+      // its children from appearing in the capture.
+      filter: (node) => {
+        if (node instanceof HTMLElement) {
+          if (
+            node.hasAttribute('data-pinpoint-overlay') ||
+            node.hasAttribute('data-pinpoint-popover')
+          ) {
+            return false;
+          }
+        }
+        return true;
       },
-    });
+    };
 
-    return new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(
-        (blob) => resolve(blob),
-        'image/png',
-        1.0,
-      );
-    });
+    const blob = await domToBlob(element, options);
+    return blob;
   } catch (error) {
     console.error('[Pinpoint] Screenshot capture failed:', error);
     return null;

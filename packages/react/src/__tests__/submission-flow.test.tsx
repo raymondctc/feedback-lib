@@ -2,12 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PinpointProvider, usePinpoint } from '../PinpointProvider.js';
 
-vi.mock('html2canvas-pro', () => ({
-  default: vi.fn().mockResolvedValue({
-    toBlob: (cb: (blob: Blob | null) => void) => {
-      cb(new Blob(['fake-png'], { type: 'image/png' }));
-    },
-  }),
+vi.mock('modern-screenshot', () => ({
+  domToBlob: vi.fn().mockResolvedValue(new Blob(['fake-png'], { type: 'image/png' })),
 }));
 
 const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(

@@ -77,7 +77,7 @@ export async function createFeedback(
       params.viewport_height ?? null,
       params.user_agent ?? null,
       params.created_by ?? 'anonymous',
-      params.capture_method ?? 'html2canvas',
+      params.capture_method ?? 'dom',
       now,
       now,
     )

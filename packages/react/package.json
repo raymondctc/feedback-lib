@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@pinpoint/shared": "workspace:*",
-    "html2canvas-pro": "^2.0.2"
+    "modern-screenshot": "^4.7.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16",

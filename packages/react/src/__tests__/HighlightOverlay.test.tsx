@@ -7,7 +7,7 @@ const defaultConfig: PinpointProviderConfig = {
   endpoint: 'https://test.dev/api/v1/feedback',
   projectId: 'test',
   categories: ['bug', 'suggestion', 'question', 'other'],
-  captureMethod: 'html2canvas',
+  captureMethod: 'dom',
   theme: 'auto',
   exclude: undefined,
 };

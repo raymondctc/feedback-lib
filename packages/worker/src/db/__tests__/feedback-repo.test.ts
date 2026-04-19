@@ -20,7 +20,7 @@ const sampleFeedback: FeedbackRow = {
   viewport_height: 1080,
   user_agent: 'Mozilla/5.0',
   created_by: 'anonymous',
-  capture_method: 'html2canvas',
+  capture_method: 'dom',
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
   deleted_at: null,
