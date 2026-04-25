@@ -185,8 +185,18 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       setHighlightedElement(best);
     };
 
+    // Touch handling: distinguish taps from scrolls on mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchMoved = false;
+    let touchHandled = false;
+
     // Any click on the highlighted element selects it (no border-only restriction)
     const handleClick = (e: MouseEvent) => {
+      if (touchHandled) {
+        touchHandled = false;
+        return;
+      }
       // Don't intercept clicks on overlay UI (arrow buttons, etc.)
       const target = e.target as HTMLElement;
       if (target && target.closest('[data-pinpoint-overlay]')) return;
@@ -232,27 +242,49 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove, true);
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-
     const handleTouchStart = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target.closest('[data-pinpoint-overlay]')) return;
-
+      if (e.touches.length !== 1) return;
       const touch = e.touches[0];
-      if (!touch) return;
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchMoved = false;
+      touchHandled = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchMoved) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        touchMoved = true;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (touchMoved) return;
+      if (e.changedTouches.length !== 1) return;
+
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
+      if (target && target.closest('[data-pinpoint-overlay]')) return;
 
       const best = findBestTargetAtPoint(touch.clientX, touch.clientY);
       if (!best) return;
 
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); // prevent synthetic click
+      touchHandled = true;
       onElementSelectRef.current(best);
     };
 
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+
     if (isMobile) {
-      document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+      document.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
     }
 
     return () => {
@@ -261,6 +293,8 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
       document.removeEventListener('keydown', handleKeyDown, true);
       if (isMobile) {
         document.removeEventListener('touchstart', handleTouchStart, { capture: true });
+        document.removeEventListener('touchmove', handleTouchMove, { capture: true });
+        document.removeEventListener('touchend', handleTouchEnd, { capture: true });
       }
     };
   }, [findBestTarget, buildAncestorStack, selectedElement]);
