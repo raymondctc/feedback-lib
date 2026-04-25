@@ -1,20 +1,33 @@
 # @pinpoint — Agent Reference
 
-Agent-facing integration guide for the Pinpoint SDK backend. Use this file to understand how to deploy, configure, and extend the system.
+Pinpoint is a feedback SDK that lets users highlight any DOM element in a web app, capture a screenshot and DOM snapshot, and submit a comment. The backend stores submissions in Cloudflare D1 + R2 and exposes a dashboard for reviewing, resolving, and deleting feedback.
+
+## Common Commands
+
+| Task | Command |
+|---|---|
+| Start worker locally | `cd packages/worker && wrangler dev --config wrangler.toml --port 8787` |
+| Start dashboard locally | `cd packages/dashboard && pnpm dev` |
+| Run all tests | `pnpm test:run` |
+| Type check | `pnpm typecheck` |
+| Apply D1 migrations (local) | `wrangler d1 migrations apply feedback-db --local --config wrangler.toml` |
+| Create new migration | `wrangler d1 migrations create feedback-db <name> --config wrangler.toml` |
+| Build dashboard for prod | `cd packages/dashboard && pnpm build` |
+| Deploy worker | `cd packages/worker && wrangler deploy` |
 
 ## Architecture
 
 ```
 @pinpoint/shared          @pinpoint/react           @pinpoint/worker           @pinpoint/dashboard
 ┌─────────────────┐      ┌───────────────────┐    ┌────────────────────┐    ┌─────────────────────┐
-│ types.ts         │◄─────│ PinpointProvider     │    │ Hono CF Worker      │    │ React SPA (Vite)   │
-│ validators.ts    │      │ HighlightOverlay   │───▶│ ├─ auth/jwt.ts      │◄───│ ├─ views/           │
-│ constants        │      │ CommentPopover     │    │ ├─ middleware/cors.ts│    │ ├─ components/      │
-└─────────────────┘      │ ScreenshotCapture  │    │ ├─ routes/feedback  │    │ └─ api/ hooks       │
-                          │ DOMSerializer       │    │ ├─ routes/projects │    └─────────────────────┘
-                          │ FeedbackSubmitter   │    │ ├─ db/ repos        │
-                          └───────────────────┘    │ └─ storage/r2        │
-                                                    └────────────────────┘
+│ types.ts         │◄─────│ PinpointProvider  │    │ Hono CF Worker     │    │ React SPA (Vite)    │
+│ validators.ts    │      │ HighlightOverlay  │───▶│ ├─ auth/jwt.ts     │◄───│ ├─ views/           │
+│ constants        │      │ CommentPopover    │    │ ├─ middleware/cors  │    │ ├─ components/      │
+└─────────────────┘      │ ScreenshotCapture │    │ ├─ routes/feedback │    │ └─ api/ hooks       │
+                          │ DOMSerializer     │    │ ├─ routes/projects │    └─────────────────────┘
+                          │ FeedbackSubmitter │    │ ├─ db/ repos       │
+                          └───────────────────┘   │ └─ storage/r2      │
+                                                   └────────────────────┘
 ```
 
 **Data flow:** User highlights element → SDK captures screenshot + DOM snapshot → POSTs multipart/form-data to worker → worker validates via `@pinpoint/shared`, stores screenshot/DOM in R2, inserts metadata in D1 → dashboard queries worker API.
@@ -91,6 +104,12 @@ not_found_handling = "single-page-application"
 
 - **Dev mode** (empty `CF_ACCESS_TEAM_DOMAIN`): All requests allowed, `auth.email` = `dev@localhost`
 - **Production**: Requests must include `Cf-Access-Jwt-Assertion` header with valid CF Access JWT. Protected routes (PATCH status, DELETE, POST projects) require a verified email.
+
+### Security Notes
+
+- Dev mode disables all auth — never deploy with an empty `CF_ACCESS_TEAM_DOMAIN` in production.
+- `ALLOWED_ORIGINS: *` is fine for development; restrict to specific origins in production.
+- The SDK submission endpoint (`POST /feedback`) is intentionally unauthenticated so end-users can submit without logging in. Only status mutations and deletes require auth.
 
 ### Integrating the SDK into a Client App
 
@@ -323,40 +342,19 @@ Any HTTP server that implements the SDK contract can work. The key requirements:
 1. Accept `multipart/form-data` POST at your configured endpoint
 2. Validate metadata with `@pinpoint/shared` validators
 3. Store binary assets (screenshot, DOM snapshot) in object storage
-4. Store metadata in a database following the schema below
+4. Store metadata in a database following the schema above
 5. Provide GET endpoints for binary asset retrieval
 6. Provide admin endpoints for listing, viewing, and managing feedback
 
-### Database Schema
+### Database Schema (generic / Drizzle)
 
-The schema is database-agnostic. Implement it in whatever ORM your project uses. The logical model:
+The schema is database-agnostic. Implement it in whatever ORM your project uses.
 
-**`projects` table:**
-- `id` (primary key, string) — nanoid or UUID
-- `name` (not null, string)
-- `slug` (unique, not null, string) — human-readable identifier, also accepted as `projectId` in feedback submission
-- `created_at` (not null, timestamp)
+**`projects` table:** `id` (PK), `name` (not null), `slug` (unique, not null), `created_at`
 
-**`feedback` table:**
-- `id` (primary key, string) — nanoid or UUID
-- `project_id` (foreign key → projects.id, not null)
-- `status` (not null, default 'open') — one of: `open`, `resolved`, `dismissed`, `deleted`
-- `category` (nullable) — one of: `bug`, `suggestion`, `question`, `other`
-- `comment` (not null, string, max 2000 chars)
-- `selector` (nullable, string) — CSS selector of highlighted element
-- `url` (nullable, string) — page URL
-- `viewport_width` (nullable, integer)
-- `viewport_height` (nullable, integer)
-- `user_agent` (nullable, string)
-- `created_by` (default 'anonymous', string) — email from auth or 'anonymous'
-- `capture_method` (default 'dom', string) — `dom` or `native`
-- `created_at` (not null, timestamp)
-- `updated_at` (not null, timestamp)
-- `deleted_at` (nullable, timestamp) — set when soft-deleted
+**`feedback` table:** same columns as the D1 schema above. Indexes: `project_id`, `status`, `created_at`, `(project_id, status)`
 
-**Indexes:** `project_id`, `status`, `created_at`, `(project_id, status)`
-
-**Drizzle ORM example** (for projects using Drizzle with SQLite/D1):
+**Drizzle ORM example** (SQLite/D1):
 
 ```ts
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
@@ -394,8 +392,6 @@ export const pinpointFeedback = sqliteTable('pinpoint_feedback', {
 
 ### Object Storage Keys
 
-Regardless of backend, use this key layout in R2/S3:
-
 - `feedback/{id}/screenshot.png` — PNG image
 - `feedback/{id}/dom-snapshot.json` — JSON document
 
@@ -406,7 +402,6 @@ Use `@pinpoint/shared` validators regardless of your backend framework:
 ```ts
 import { validateFeedbackMetadata, validateDOMSnapshot } from '@pinpoint/shared';
 
-// In your POST /feedback handler:
 const metadataValidation = validateFeedbackMetadata(metadataObj);
 if (!metadataValidation.valid) {
   return { status: 400, body: { error: metadataValidation.error } };
@@ -443,7 +438,7 @@ if (!snapshotValidation.valid) {
 
 **For embedded backends:**
 
-1. Add the new field/column to your schema and database (follow the Drizzle ORM example above or use raw SQL)
+1. Add the new field/column to your schema and database
 2. Update the REST route handler if the SDK contract changes
 3. Add admin tRPC/GraphQL/REST routes for the admin viewer
 4. Update `@pinpoint/shared` types if the SDK metadata format changes
@@ -476,13 +471,18 @@ pnpm typecheck
 - Auth: Mock `jose.jwtVerify` and `fetch` for JWKS
 - Routes: Create Hono app with middleware injecting env + auth context
 
-## Common Tasks
+## Commit Guidelines
 
-| Task | Command |
-|---|---|
-| Start worker locally | `cd packages/worker && wrangler dev --config wrangler.toml --port 8787` |
-| Start dashboard locally | `cd packages/dashboard && pnpm dev` |
-| Apply D1 migrations | `wrangler d1 migrations apply feedback-db --local --config wrangler.toml` |
-| Create new migration | `wrangler d1 migrations create feedback-db <name> --config wrangler.toml` |
-| Build dashboard for prod | `cd packages/dashboard && pnpm build` |
-| Deploy worker | `cd packages/worker && wrangler deploy` |
+This repo uses [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>[optional scope]: <description>
+
+Types: feat, fix, docs, refactor, test, chore
+Scopes: react, worker, dashboard, shared (match the package name)
+
+Examples:
+  feat(react): add keyboard shortcut to toggle overlay
+  fix(worker): handle missing screenshot field gracefully
+  docs: update deployment steps for wrangler v3
+```
