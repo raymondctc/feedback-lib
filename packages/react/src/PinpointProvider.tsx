@@ -3,6 +3,7 @@ import type { PinpointProviderConfig, DOMSnapshotNode } from '@pinpoint/shared';
 import { DEFAULT_CATEGORIES } from '@pinpoint/shared';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { CommentPopover } from './CommentPopover.js';
+import { MobileCommentSheet } from './MobileCommentSheet.js';
 import { isDarkMode } from './CommentPopover.js';
 
 export interface PinpointContextValue {
@@ -44,6 +45,9 @@ export function PinpointProvider({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capturedData, setCapturedData] = useState<CapturedData | null>(null);
   const dark = isDarkMode();
+
+  // Detect touch devices at render time (coarse pointer is enough)
+  const isMobile = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
   // Set cursor to crosshair when feedback mode is active
   useEffect(() => {
@@ -222,15 +226,55 @@ export function PinpointProvider({
               onElementSelect={handleElementSelect}
               selectedElement={selectedElement}
               selectedRect={selectedRect}
+              isMobile={isMobile}
             />
           )}
-          {!isSubmitting && selectedElement && selectedRect && (
-            <CommentPopover
-              anchorRect={selectedRect}
-              categories={config.categories ?? DEFAULT_CATEGORIES}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-            />
+          {!isSubmitting && selectedElement && (
+            isMobile ? (
+              <MobileCommentSheet
+                element={selectedElement}
+                categories={config.categories ?? DEFAULT_CATEGORIES}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                isSubmitting={isSubmitting}
+              />
+            ) : (
+              selectedRect && (
+                <CommentPopover
+                  anchorRect={selectedRect}
+                  categories={config.categories ?? DEFAULT_CATEGORIES}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancel}
+                />
+              )
+            )
+          )}
+          {isActive && isMobile && !selectedElement && !isSubmitting && (
+            <button
+              data-pinpoint-overlay=""
+              onClick={toggle}
+              style={{
+                position: 'fixed',
+                bottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+                right: '16px',
+                zIndex: 999999,
+                padding: '12px 16px',
+                backgroundColor: dark ? '#3a3a3c' : '#fff',
+                color: dark ? '#f5f5f7' : '#111827',
+                border: `1px solid ${dark ? '#48484a' : '#e5e7eb'}`,
+                borderRadius: '24px',
+                fontSize: '14px',
+                fontWeight: 500,
+                fontFamily: 'system-ui, sans-serif',
+                cursor: 'pointer',
+                boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 12px rgba(0,0,0,0.15)',
+                pointerEvents: 'auto',
+                minHeight: '48px',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              ✕ Exit Feedback
+            </button>
           )}
         </>
       )}

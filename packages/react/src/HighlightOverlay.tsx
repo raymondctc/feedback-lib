@@ -7,11 +7,12 @@ interface HighlightOverlayProps {
   onElementSelect: (element: HTMLElement) => void;
   selectedElement?: HTMLElement | null;
   selectedRect?: DOMRect | null;
+  isMobile?: boolean;
 }
 
 const HINT_KEY = 'pinpoint-hint-shown';
 
-export function HighlightOverlay({ config, onElementSelect, selectedElement, selectedRect }: HighlightOverlayProps) {
+export function HighlightOverlay({ config, onElementSelect, selectedElement, selectedRect, isMobile }: HighlightOverlayProps) {
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [ancestorStack, setAncestorStack] = useState<HTMLElement[]>([]);
   const [ancestorLevel, setAncestorLevel] = useState(0);
@@ -65,6 +66,19 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     [isValidTarget],
   );
 
+  const findBestTargetAtPoint = useCallback(
+    (clientX: number, clientY: number): HTMLElement | null => {
+      const stack = document.elementsFromPoint(clientX, clientY);
+      for (const node of stack) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.tagName === 'HTML' || node.tagName === 'BODY') continue;
+        if (isValidTarget(node)) return node;
+      }
+      return null;
+    },
+    [isValidTarget],
+  );
+
   const findBestTarget = useCallback(
     (e: MouseEvent): HTMLElement | null => {
       const path = e.composedPath();
@@ -74,15 +88,9 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
         if (node.tagName === 'HTML' || node.tagName === 'BODY') continue;
         if (isValidTarget(node)) return node;
       }
-      const stack = document.elementsFromPoint(e.clientX, e.clientY);
-      for (const node of stack) {
-        if (!(node instanceof HTMLElement)) continue;
-        if (node.tagName === 'HTML' || node.tagName === 'BODY') continue;
-        if (isValidTarget(node)) return node;
-      }
-      return null;
+      return findBestTargetAtPoint(e.clientX, e.clientY);
     },
-    [isValidTarget],
+    [isValidTarget, findBestTargetAtPoint],
   );
 
   // Show first-use hint once per browser
@@ -227,10 +235,33 @@ export function HighlightOverlay({ config, onElementSelect, selectedElement, sel
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleKeyDown, true);
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.closest('[data-pinpoint-overlay]')) return;
+
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const best = findBestTargetAtPoint(touch.clientX, touch.clientY);
+      if (!best) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      onElementSelectRef.current(best);
+    };
+
+    if (isMobile) {
+      document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    }
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove, true);
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('keydown', handleKeyDown, true);
+      if (isMobile) {
+        document.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      }
     };
   }, [findBestTarget, buildAncestorStack, selectedElement]);
 
